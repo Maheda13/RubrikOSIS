@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Penilaian Wawancara OSIS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- CONFIG: Ganti URL ini setelah deploy GAS                           -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<script>
+  const GAS_URL = 'PASTE_GAS_WEB_APP_URL_DI_SINI';
+</script>
+
+<header>
+  <h1>📋 Penilaian Wawancara OSIS</h1>
+  <p class="subtitle">Sistem Penilaian Calon Pengurus OSIS</p>
+</header>
+
+<main id="app">
+
+  <!-- ─── STEP 1: Data Kandidat ─────────────────────────────────────── -->
+  <section id="step1" class="step active">
+    <div class="step-header">
+      <span class="step-badge">1</span>
+      <h2>Data Kandidat</h2>
+    </div>
+    <div class="card">
+      <div class="form-group">
+        <label for="nama">Nama Lengkap</label>
+        <input type="text" id="nama" placeholder="Masukkan nama lengkap">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="kelas">Kelas</label>
+          <input type="text" id="kelas" placeholder="Contoh: XII IPA 1">
+        </div>
+        <div class="form-group">
+          <label for="divisi">Divisi Pilihan</label>
+          <select id="divisi">
+            <option value="">-- Pilih Divisi --</option>
+            <option value="Ketua OSIS">Ketua OSIS</option>
+            <option value="Wakil Ketua OSIS">Wakil Ketua OSIS</option>
+            <option value="Sekretaris">Sekretaris</option>
+            <option value="Bendahara">Bendahara</option>
+            <option value="Kepala Bidang Keagamaan">Kepala Bidang Keagamaan</option>
+            <option value="Kepala Bidang Kesiswaan">Kepala Bidang Kesiswaan</option>
+            <option value="Kepala Bidang Pengembangan Dir">Kepala Bidang Pengembangan Diri</option>
+            <option value="Kepala Bidang Humas">Kepala Bidang Humas</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="goToStep(2)">Selanjutnya →</button>
+    </div>
+  </section>
+
+  <!-- ─── STEP 2: Pertanyaan Umum ───────────────────────────────────── -->
+  <section id="step2" class="step">
+    <div class="step-header">
+      <span class="step-badge">2</span>
+      <h2>Pertanyaan Umum</h2>
+    </div>
+    <div id="pertanyaan-container"></div>
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="goToStep(1)">← Kembali</button>
+      <button class="btn btn-primary" onclick="goToStep(3)">Selanjutnya →</button>
+    </div>
+  </section>
+
+  <!-- ─── STEP 3: Studi Kasus ───────────────────────────────────────── -->
+  <section id="step3" class="step">
+    <div class="step-header">
+      <span class="step-badge">3</span>
+      <h2>Studi Kasus</h2>
+    </div>
+    <div id="studi-kasus-container"></div>
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="goToStep(2)">← Kembali</button>
+      <button class="btn btn-primary" onclick="goToStep(4)">Selanjutnya →</button>
+    </div>
+  </section>
+
+  <!-- ─── STEP 4: Ringkasan ─────────────────────────────────────────── -->
+  <section id="step4" class="step">
+    <div class="step-header">
+      <span class="step-badge">4</span>
+      <h2>Ringkasan Penilaian</h2>
+    </div>
+    <div id="ringkasan-container"></div>
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="goToStep(3)">← Kembali</button>
+      <button class="btn btn-primary btn-submit" onclick="submitPenilaian()">✅ Simpan Penilaian</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ─── Rubrik Modal ─────────────────────────────────────────────────── -->
+<div id="rubrik-modal" class="modal" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <h3>Rubrik Penilaian</h3>
+    <div id="rubrik-body"></div>
+  </div>
+</div>
+
+<!-- ─── Toast ────────────────────────────────────────────────────────── -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════
+const PERTANYAAN = [
+  { id: 'Q1', judul: 'Alasan Memilih Divisi', teks: 'Mengapa kamu memilih divisi tersebut?', aspek: 'Motivasi, pemahaman divisi, kesesuaian minat' },
+  { id: 'Q2', judul: 'Kontribusi untuk Sekolah', teks: 'Apa yang ingin kamu kontribusikan untuk sekolah?', aspek: 'Kreativitas, dampak, realistis' },
+  { id: 'Q3', judul: 'Hal yang Perlu Diperbaiki', teks: 'Apa yang menurutmu perlu diperbaiki dari kegiatan santri di sekolah?', aspek: 'Observasi, analisis, solusi' },
+  { id: 'Q4', judul: 'Ide Kegiatan/Program', teks: 'Ide kegiatan atau program yang ingin kamu kembangkan?', aspek: 'Inovasi, perencanaan, eksekusi' },
+  { id: 'Q5', judul: 'Visi dan Misi', teks: 'Apa visi dan misi kamu terhadap organisasi tersebut? Jelaskan!', aspek: 'Visi jangka panjang, keselarasan, komitmen' }
+];
+
+const STUDI_KASUS = [
+  {
+    id: 'SK1', judul: 'Konflik dalam Tim',
+    cerita: 'Kamu ditunjuk menjadi ketua sebuah kegiatan OSIS. Dalam persiapan kegiatan, dua anggota tim berselisih pendapat dan mulai saling menyalahkan. Akibatnya, pekerjaan kelompok menjadi terhambat dan anggota lain ikut merasa tidak nyaman.',
+    pertanyaan: [
+      'Apa yang akan kamu lakukan sebagai ketua?',
+      'Bagaimana cara kamu menyelesaikan konflik tersebut?',
+      'Apakah kamu akan mengambil keputusan sendiri atau melibatkan anggota? Jelaskan alasannya.'
+    ],
+    aspek: [
+      { id: 'SK1_Kepemimpinan', label: 'Kepemimpinan' },
+      { id: 'SK1_Komunikasi', label: 'Komunikasi' },
+      { id: 'SK1_Konflik', label: 'Kemampuan Menyelesaikan Konflik' },
+      { id: 'SK1_Adil', label: 'Sikap Adil' }
+    ]
+  },
+  {
+    id: 'SK2', judul: 'Tanggung Jawab & Kejujuran',
+    cerita: 'Kamu mendapatkan tugas sebagai panitia sebuah kegiatan OSIS. Sehari sebelum kegiatan, kamu menyadari bahwa ada kesalahan dalam data peserta yang disebabkan oleh kelalaianmu. Jika kesalahan tersebut diketahui pembina, kemungkinan kegiatan akan mengalami sedikit kendala.',
+    pertanyaan: [
+      'Apa yang akan kamu lakukan?',
+      'Apakah kamu akan menyampaikan kesalahan tersebut kepada pembina? Mengapa?',
+      'Bagaimana cara kamu memperbaiki kesalahan tersebut?'
+    ],
+    aspek: [
+      { id: 'SK2_Kejujuran', label: 'Kejujuran' },
+      { id: 'SK2_TanggungJawab', label: 'Tanggung Jawab' },
+      { id: 'SK2_Berani', label: 'Keberanian Mengakui Kesalahan' },
+      { id: 'SK2_Solusi', label: 'Kemampuan Mencari Solusi' }
+    ]
+  },
+  {
+    id: 'SK3', judul: 'Anggota Tidak Aktif',
+    cerita: 'Dalam sebuah kegiatan OSIS, terdapat anggota yang sering tidak hadir dalam rapat dan tidak menyelesaikan tugas yang diberikan. Beberapa anggota lain mulai mengeluh karena merasa harus mengerjakan tugasnya.',
+    pertanyaan: [
+      'Apa yang akan kamu lakukan terhadap anggota tersebut?',
+      'Apakah kamu akan langsung memberikan sanksi?',
+      'Bagaimana cara kamu mengetahui alasan anggota tersebut tidak aktif?'
+    ],
+    aspek: [
+      { id: 'SK3_Empati', label: 'Empati' },
+      { id: 'SK3_Tegas', label: 'Ketegasan' },
+      { id: 'SK3_Komunikasi', label: 'Kemampuan Berkomunikasi' },
+      { id: 'SK3_Keputusan', label: 'Pengambilan Keputusan' }
+    ]
+  },
+  {
+    id: 'SK4', judul: 'Prioritas Akademik & OSIS',
+    cerita: 'Kamu terpilih menjadi pengurus OSIS dan mendapatkan tugas penting untuk sebuah kegiatan sekolah. Pada waktu yang sama, kamu harus mempersiapkan diri untuk ujian yang akan dilaksanakan dalam beberapa hari.',
+    pertanyaan: [
+      'Bagaimana kamu akan membagi waktu antara belajar dan tugas OSIS?',
+      'Apa yang akan kamu lakukan jika tugas OSIS semakin banyak?',
+      'Menurutmu, mana yang harus diprioritaskan dan bagaimana cara menyeimbangkannya?'
+    ],
+    aspek: [
+      { id: 'SK4_Waktu', label: 'Manajemen Waktu' },
+      { id: 'SK4_TanggungJawab', label: 'Tanggung Jawab' },
+      { id: 'SK4_Disiplin', label: 'Kedisiplinan' },
+      { id: 'SK4_Prioritas', label: 'Kemampuan Menentukan Prioritas' }
+    ]
+  }
+];
+
+const RUBRIK_SKOR = [
+  { skor: 1,  label: 'Tidak mampu menjawab/tidak memahami pertanyaan.' },
+  { skor: 2,  label: 'Jawaban sangat tidak relevan dan tidak menunjukkan sikap yang diharapkan.' },
+  { skor: 3,  label: 'Jawaban sangat sederhana, solusi kurang tepat, dan membutuhkan banyak arahan.' },
+  { skor: 4,  label: 'Jawaban mulai relevan, tetapi alasan dan solusi masih lemah.' },
+  { skor: 5,  label: 'Jawaban cukup relevan dan menunjukkan pemahaman dasar.' },
+  { skor: 6,  label: 'Jawaban cukup baik, dengan alasan dan solusi yang masuk akal.' },
+  { skor: 7,  label: 'Jawaban baik, logis, realistis, dan menunjukkan sikap positif.' },
+  { skor: 8,  label: 'Jawaban sangat baik, sistematis, solutif, dan menunjukkan kedewasaan berpikir.' },
+  { skor: 9,  label: 'Jawaban sangat matang, mempertimbangkan berbagai pihak dan risiko.' },
+  { skor: 10, label: 'Jawaban sangat matang, spesifik, realistis, solutif, dan menunjukkan kepemimpinan kuat.' }
+];
+
+const KATEGORI = [
+  { min: 9.0, max: 10.0, label: 'Sangat Direkomendasikan', color: '#27ae60' },
+  { min: 8.0, max: 8.9,  label: 'Direkomendasikan',        color: '#2980b9' },
+  { min: 7.0, max: 7.9,  label: 'Dipertimbangkan',         color: '#f39c12' },
+  { min: 6.0, max: 6.9,  label: 'Perlu Pertimbangan',      color: '#e67e22' },
+  { min: 0.0, max: 5.9,  label: 'Tidak Direkomendasikan',  color: '#c0392b' }
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  renderPertanyaan();
+  renderStudiKasus();
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════
+function renderPertanyaan() {
+  const container = document.getElementById('pertanyaan-container');
+  container.innerHTML = PERTANYAAN.map((q, i) => `
+    <div class="card question-card">
+      <div class="question-header">
+        <span class="question-number">P${i + 1}</span>
+        <div>
+          <h3>${q.judul}</h3>
+          <p class="question-text">${q.teks}</p>
+          <p class="question-aspek">📌 Aspek: ${q.aspek}</p>
+        </div>
+      </div>
+      <div class="score-control">
+        <label>Skor:</label>
+        <div class="score-buttons">
+          ${[1,2,3,4,5,6,7,8,9,10].map(s => `
+            <button class="score-btn" data-q="${q.id}" data-skor="${s}"
+                    onclick="setSkor('${q.id}', ${s})">${s}</button>
+          `).join('')}
+        </div>
+        <span class="skor-display" id="display_${q.id}">-</span>
+        <button class="btn-rubrik" onclick="showRubrik()">ℹ️ Rubrik</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStudiKasus() {
+  const container = document.getElementById('studi-kasus-container');
+  container.innerHTML = STUDI_KASUS.map((sk, i) => `
+    <div class="card studi-kasus-card">
+      <div class="sk-header">
+        <span class="sk-number">SK${i + 1}</span>
+        <h3>${sk.judul}</h3>
+      </div>
+      <div class="sk-cerita">
+        <p>📖 <strong>Situasi:</strong> ${sk.cerita}</p>
+      </div>
+      <div class="sk-pertanyaan">
+        <h4>Pertanyaan:</h4>
+        <ol>
+          ${sk.pertanyaan.map(p => `<li>${p}</li>`).join('')}
+        </ol>
+      </div>
+      <div class="sk-aspek-grid">
+        <h4>Penilaian Aspek:</h4>
+        ${sk.aspek.map(a => `
+          <div class="aspek-row">
+            <label>${a.label}</label>
+            <div class="score-buttons">
+              ${[1,2,3,4,5,6,7,8,9,10].map(s => `
+                <button class="score-btn" data-q="${a.id}" data-skor="${s}"
+                        onclick="setSkor('${a.id}', ${s})">${s}</button>
+              `).join('')}
+            </div>
+            <span class="skor-display" id="display_${a.id}">-</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SCORING
+// ═══════════════════════════════════════════════════════════════════════
+const scores = {};
+
+function setSkor(questionId, skor) {
+  scores[questionId] = skor;
+
+  // Update buttons
+  document.querySelectorAll(`[data-q="${questionId}"]`).forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.skor) === skor);
+  });
+
+  // Update display
+  const display = document.getElementById(`display_${questionId}`);
+  const rubrik = RUBRIK_SKOR.find(r => r.skor === skor);
+  display.textContent = `${skor} — ${rubrik ? rubrik.label : ''}`;
+  display.classList.add('show');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════
+function goToStep(step) {
+  // Validate step 1
+  if (step >= 2) {
+    const nama = document.getElementById('nama').value.trim();
+    const kelas = document.getElementById('kelas').value.trim();
+    const divisi = document.getElementById('divisi').value;
+    if (!nama || !kelas || !divisi) {
+      showToast('⚠️ Mohon lengkapi semua data kandidat terlebih dahulu.');
+      return;
+    }
+  }
+
+  // Validate scores for step 4
+  if (step === 4) {
+    const allIds = [
+      ...PERTANYAAN.map(q => q.id),
+      ...STUDI_KASUS.flatMap(sk => sk.aspek.map(a => a.id))
+    ];
+    const missing = allIds.filter(id => !scores[id]);
+    if (missing.length > 0) {
+      showToast(`⚠️ Masih ada ${missing.length} aspek yang belum dinilai.`);
+      return;
+    }
+  }
+
+  // Show/hide steps
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(`step${step}`).classList.add('active');
+
+  // Render summary if step 4
+  if (step === 4) renderRingkasan();
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RINGKASAN
+// ═══════════════════════════════════════════════════════════════════════
+function renderRingkasan() {
+  const container = document.getElementById('ringkasan-container');
+  const nama = document.getElementById('nama').value;
+  const kelas = document.getElementById('kelas').value;
+  const divisi = document.getElementById('divisi').value;
+
+  // Calculate averages
+  const qScores = PERTANYAAN.map(q => scores[q.id] || 0);
+  const qAvg = (qScores.reduce((a, b) => a + b, 0) / qScores.length).toFixed(1);
+
+  const skAverages = STUDI_KASUS.map(sk => {
+    const aspekScores = sk.aspek.map(a => scores[a.id] || 0);
+    return (aspekScores.reduce((a, b) => a + b, 0) / aspekScores.length).toFixed(1);
+  });
+
+  const allScores = [...qScores, ...STUDI_KASUS.flatMap(sk => sk.aspek.map(a => scores[a.id] || 0))];
+  const rataRata = (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1);
+
+  // Determine category
+  const kategori = KATEGORI.find(k => rataRata >= k.min && rataRata <= k.max);
+
+  container.innerHTML = `
+    <div class="card summary-card">
+      <div class="summary-header">
+        <h3>${nama}</h3>
+        <p>${kelas} — ${divisi}</p>
+      </div>
+
+      <div class="summary-section">
+        <h4>📝 Pertanyaan Umum (Rata-rata: ${qAvg})</h4>
+        <table class="summary-table">
+          <thead><tr><th>Pertanyaan</th><th>Skor</th></tr></thead>
+          <tbody>
+            ${PERTANYAAN.map((q, i) => `
+              <tr><td>${q.judul}</td><td class="skor-cell">${scores[q.id]}</td></tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      ${STUDI_KASUS.map((sk, i) => `
+        <div class="summary-section">
+          <h4>📋 ${sk.judul} (Rata-rata: ${skAverages[i]})</h4>
+          <table class="summary-table">
+            <thead><tr><th>Aspek</th><th>Skor</th></tr></thead>
+            <tbody>
+              ${sk.aspek.map(a => `
+                <tr><td>${a.label}</td><td class="skor-cell">${scores[a.id]}</td></tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `).join('')}
+
+      <div class="summary-final">
+        <div class="final-score">
+          <span class="final-label">Rata-rata Keseluruhan</span>
+          <span class="final-number">${rataRata}</span>
+          <span class="final-category" style="background:${kategori ? kategori.color : '#999'}">
+            ${kategori ? kategori.label : '-'}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem">
+        <label for="catatan">Catatan Tambahan (opsional)</label>
+        <textarea id="catatan" rows="3" placeholder="Tulis catatan tambahan tentang kandidat..."></textarea>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SUBMIT
+// ═══════════════════════════════════════════════════════════════════════
+async function submitPenilaian() {
+  const allScores = [
+    ...PERTANYAAN.map(q => scores[q.id] || 0),
+    ...STUDI_KASUS.flatMap(sk => sk.aspek.map(a => scores[a.id] || 0))
+  ];
+  const rataRata = (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1);
+  const kategori = KATEGORI.find(k => rataRata >= k.min && rataRata <= k.max);
+
+  const payload = {
+    action: 'submitPenilaian',
+    nama: document.getElementById('nama').value.trim(),
+    kelas: document.getElementById('kelas').value.trim(),
+    divisi: document.getElementById('divisi').value,
+    skor: { ...scores },
+    rataRata: parseFloat(rataRata),
+    kategori: kategori ? kategori.label : '-',
+    catatan: document.getElementById('catatan')?.value || ''
+  };
+
+  if (GAS_URL === 'PASTE_GAS_WEB_APP_URL_DI_SINI') {
+    showToast('⚠️ Belum di-deploy. Silakan paste URL GAS Web App di kode sumber.');
+    return;
+  }
+
+  try {
+    const resp = await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+    showToast('✅ Penilaian berhasil disimpan!');
+    setTimeout(() => {
+      if (confirm('Penilaian tersimpan. Ingin menilai kandidat berikutnya?')) {
+        resetForm();
+        goToStep(1);
+      }
+    }, 1000);
+  } catch (err) {
+    showToast('❌ Gagal menyimpan: ' + err.message);
+  }
+}
+
+function resetForm() {
+  document.getElementById('nama').value = '';
+  document.getElementById('kelas').value = '';
+  document.getElementById('divisi').value = '';
+  document.getElementById('catatan').value = '';
+  Object.keys(scores).forEach(k => delete scores[k]);
+  document.querySelectorAll('.score-btn.active').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.skor-display').forEach(d => {
+    d.textContent = '-';
+    d.classList.remove('show');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RUBRIK MODAL
+// ═══════════════════════════════════════════════════════════════════════
+function showRubrik() {
+  const body = document.getElementById('rubrik-body');
+  body.innerHTML = `
+    <table class="rubrik-table">
+      <thead><tr><th>Skor</th><th>Deskripsi</th></tr></thead>
+      <tbody>
+        ${RUBRIK_SKOR.map(r => `
+          <tr>
+            <td class="rubrik-skor">${r.skor}</td>
+            <td>${r.label}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  document.getElementById('rubrik-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('rubrik-modal')) {
+    document.getElementById('rubrik-modal').classList.remove('open');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════════
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
