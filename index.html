@@ -9,7 +9,7 @@
 <body>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzogx6iAI8A2XZf2CxEgUh6LvPTu2xKtIBT2pHoKqMc6wWb2sEdOH2FuJSQkUlVNhKv3g/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwEfeqLgcSpV-Lef9zrjB9-66bE0KZsGnZlMT39pCBjfK1Ee3qV4vJtpXpabzAPMsEPQQ/exec';
 </script>
 
 <header>
@@ -602,40 +602,75 @@ function renderRingkasan() {
 }
 
 // ─── SUBMIT ────────────────────────────────────────────────────────────
+let _submitting = false;
+
 async function submitPenilaian() {
+  if (_submitting) return;
+  _submitting = true;
+
+  const submitBtn = document.querySelector('.btn-submit');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Menyimpan...'; }
+
   const all = [
     ...PERTANYAAN.map(q => scores[q.id] || 0),
     ...STUDI_KASUS.flatMap(sk => sk.aspek.map(a => scores[a.id] || 0))
   ];
   const rataRata = (all.reduce((a,b) => a+b, 0) / all.length).toFixed(1);
   const kategori = KATEGORI.find(k => rataRata >= k.min && rataRata <= k.max);
-
-  const payload = {
-    action: 'submitPenilaian',
-    nama:   document.getElementById('nama').value.trim(),
-    kelas:  document.getElementById('kelas').value,
-    divisi: document.getElementById('divisi').value,
-    skor:   Object.assign({}, scores),
-    rataRata: parseFloat(rataRata),
-    kategori: kategori ? kategori.label : '-',
-    catatan:  document.getElementById('catatan') ? document.getElementById('catatan').value : ''
-  };
+  const nama = document.getElementById('nama').value.trim();
 
   try {
+    // Check for duplicate before submitting
+    const dupUrl = GAS_URL + '?action=checkDuplicate&nama=' + encodeURIComponent(nama);
+    const dupResult = await fetch(dupUrl).then(r => r.json());
+
+    if (dupResult.success && dupResult.duplicate) {
+      const ex = dupResult.existing;
+      const proceed = confirm(
+        '⚠️ Kandidat "' + nama + '" sudah pernah dinilai sebelumnya.\n\n' +
+        'Data sebelumnya:\n' +
+        'Kelas: ' + ex.kelas + '\n' +
+        'Divisi: ' + ex.divisi + '\n' +
+        'Rata-rata: ' + ex.rataRata + '\n\n' +
+        'Tetap ingin menyimpan ulang?'
+      );
+      if (!proceed) {
+        _submitting = false;
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✅ Simpan Penilaian'; }
+        return;
+      }
+    }
+
+    const payload = {
+      action: 'submitPenilaian',
+      nama:   nama,
+      kelas:  document.getElementById('kelas').value,
+      divisi: document.getElementById('divisi').value,
+      skor:   Object.assign({}, scores),
+      rataRata: parseFloat(rataRata),
+      kategori: kategori ? kategori.label : '-',
+      catatan:  document.getElementById('catatan') ? document.getElementById('catatan').value : ''
+    };
+
     await fetch(GAS_URL, {
       method: 'POST',
       mode: 'no-cors',
       body: JSON.stringify(payload)
     });
+    clearCache();
     showToast('✅ Penilaian berhasil disimpan!');
     setTimeout(() => {
       if (confirm('Penilaian tersimpan. Ingin menilai kandidat berikutnya?')) {
         resetForm();
         goToStep(1);
       }
+      _submitting = false;
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✅ Simpan Penilaian'; }
     }, 1000);
   } catch (err) {
     showToast('❌ Gagal menyimpan: ' + err.message);
+    _submitting = false;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✅ Simpan Penilaian'; }
   }
 }
 
