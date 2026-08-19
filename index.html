@@ -28,7 +28,10 @@
     <div class="card">
       <div class="form-group">
         <label for="nama">Nama Lengkap</label>
-        <input type="text" id="nama" placeholder="Ketik nama untuk mencari data pendaftaran">
+        <div class="autocomplete-wrapper">
+          <input type="text" id="nama" placeholder="Ketik nama untuk mencari data pendaftaran" autocomplete="off">
+          <div id="nama-suggestions" class="suggestions-dropdown" hidden></div>
+        </div>
       </div>
 
       <!-- Panel referensi data pendaftaran -->
@@ -65,7 +68,6 @@
             <option value="Keamanan">Keamanan</option>
             <option value="Ibadah">Ibadah</option>
             <option value="Humas">Humas</option>
-            <option value="Bahasa">Bahasa</option>
           </select>
         </div>
       </div>
@@ -131,13 +133,14 @@
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <script>
 (function() {
-  const nameInput   = document.getElementById('nama');
-  const classInput  = document.getElementById('kelas');
-  const divisiInput = document.getElementById('divisi');
-  const box         = document.getElementById('registration-reference');
-  const details     = document.getElementById('registration-details');
-  const status      = document.getElementById('registration-status');
-  if (!nameInput || !box) return;
+  const nameInput     = document.getElementById('nama');
+  const classInput    = document.getElementById('kelas');
+  const divisiInput   = document.getElementById('divisi');
+  const box           = document.getElementById('registration-reference');
+  const details       = document.getElementById('registration-details');
+  const status        = document.getElementById('registration-status');
+  const suggestions   = document.getElementById('nama-suggestions');
+  if (!nameInput || !box || !suggestions) return;
 
   const FIELD_LABELS = {
     'Tempat dan Tgl. Lahir':              'Tempat & Tanggal Lahir',
@@ -225,14 +228,67 @@
 
     } catch (err) {
       status.textContent = '⚠ Gagal terhubung';
+      console.error('[Lookup] Error:', err);
     }
   }
 
+  // ─── Autocomplete Search ─────────────────────────────────────────────
+  async function searchSuggestions(query) {
+    if (!query || query.length < 1) { suggestions.hidden = true; return; }
+    try {
+      const resp = await fetch(GAS_URL + '?action=searchNames&q=' + encodeURIComponent(query));
+      const result = await resp.json();
+      console.log('[Search] Query:', query, '| Hasil:', result.names);
+      if (!result.success || !result.names || result.names.length === 0) {
+        suggestions.hidden = true;
+        return;
+      }
+      suggestions.innerHTML = result.names.map(n =>
+        '<div class="suggestion-item">' + esc(n) + '</div>'
+      ).join('');
+      suggestions.hidden = false;
+    } catch (err) {
+      console.error('[Search] Error:', err);
+      suggestions.hidden = true;
+    }
+  }
+
+  // Click suggestion
+  suggestions.addEventListener('mousedown', function(e) {
+    const item = e.target.closest('.suggestion-item');
+    if (item) {
+      nameInput.value = item.textContent;
+      suggestions.hidden = true;
+      lookup();
+    }
+  });
+
+  // Hide suggestions on blur
+  nameInput.addEventListener('blur', function() {
+    setTimeout(function() { suggestions.hidden = true; }, 200);
+    lookup();
+  });
+
+  nameInput.addEventListener('focus', function() {
+    if (suggestions.children.length > 0 && nameInput.value.length >= 1) {
+      suggestions.hidden = false;
+    }
+  });
+
+  // ─── Input Handler ───────────────────────────────────────────────────
   nameInput.addEventListener('input', function() {
     clearTimeout(timer);
-    timer = setTimeout(lookup, 600);
+    const val = nameInput.value.trim();
+    // Show suggestions for partial input
+    timer = setTimeout(function() {
+      if (val.length >= 1) {
+        searchSuggestions(val);
+      } else {
+        suggestions.hidden = true;
+        box.hidden = true;
+      }
+    }, 300);
   });
-  nameInput.addEventListener('blur', lookup);
 })();
 </script>
 
