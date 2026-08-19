@@ -9,7 +9,7 @@
 <body>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzOj5wJAmDxlC7EIr8asJVbdR_6nq8yYFu8ddrUt4UuxdJhbjs5JigugolDbYUj_49eVg/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzogx6iAI8A2XZf2CxEgUh6LvPTu2xKtIBT2pHoKqMc6wWb2sEdOH2FuJSQkUlVNhKv3g/exec';
 </script>
 
 <header>
@@ -23,15 +23,23 @@
 
 <main id="app" style="max-width:950px;">
 
-  <!-- Loading -->
-  <div id="loading" class="card" style="text-align:center;padding:2rem;">
-    <p>⏳ Memuat data...</p>
+  <!-- Loading Skeleton -->
+  <div id="loading" class="card">
+    <div style="display:grid;gap:.65rem;">
+      <div class="skeleton skeleton-line w60"></div>
+      <div class="skeleton skeleton-line w100"></div>
+      <div class="skeleton skeleton-line w80"></div>
+      <div class="skeleton skeleton-block"></div>
+    </div>
   </div>
 
   <!-- Ringkasan Umum -->
   <section id="section-all" hidden>
     <div class="card">
-      <h2 style="margin-bottom:1rem;">📋 Semua Data Penilaian</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+        <h2>📋 Semua Data Penilaian</h2>
+        <button class="btn-export" onclick="exportCSV('all')">⬇ Export CSV</button>
+      </div>
       <div class="table-wrapper">
         <table class="summary-table-full" id="table-all">
           <thead>
@@ -46,7 +54,10 @@
   <!-- Top 10 Kelas 7 -->
   <section id="section-kelas7" hidden>
     <div class="card">
-      <h2 style="margin-bottom:1rem;">🏅 Top 10 — Kelas 7 (A & B)</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+        <h2>🏅 Top 10 — Kelas 7 (A & B)</h2>
+        <button class="btn-export" onclick="exportCSV('kelas7')">⬇ Export CSV</button>
+      </div>
       <div class="table-wrapper">
         <table class="summary-table-full" id="table-kelas7">
           <thead>
@@ -61,7 +72,10 @@
   <!-- Top 10 Kelas 8 -->
   <section id="section-kelas8" hidden>
     <div class="card">
-      <h2 style="margin-bottom:1rem;">🏅 Top 10 — Kelas 8 (A & B)</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+        <h2>🏅 Top 10 — Kelas 8 (A & B)</h2>
+        <button class="btn-export" onclick="exportCSV('kelas8')">⬇ Export CSV</button>
+      </div>
       <div class="table-wrapper">
         <table class="summary-table-full" id="table-kelas8">
           <thead>
@@ -75,7 +89,7 @@
 
   <!-- Empty state -->
   <div id="empty-state" hidden class="card" style="text-align:center;padding:2rem;">
-    <p style="color:var(--text-muted);">Belum ada data penilaian.</p>
+    <p style="color:var(--text-muted);">📭 Belum ada data penilaian.</p>
   </div>
 
 </main>
@@ -88,6 +102,21 @@ function esc(v) {
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]
   );
 }
+
+// ─── Client-side Cache ────────────────────────────────────────────────
+const _cache = {};
+async function cachedFetch(key, url) {
+  if (_cache[key]) return _cache[key];
+  const resp = await fetch(url);
+  const data = await resp.json();
+  _cache[key] = data;
+  return data;
+}
+
+// ─── Stored data for CSV export ───────────────────────────────────────
+let _allData = [];
+let _kelas7Data = [];
+let _kelas8Data = [];
 
 const KATEGORI_COLORS = {
   'Sangat Direkomendasikan': '#27ae60',
@@ -140,6 +169,47 @@ function renderTopTable(tableId, data) {
   }).join('');
 }
 
+// ─── CSV Export ───────────────────────────────────────────────────────
+function exportCSV(type) {
+  var data, filename;
+  if (type === 'all') {
+    data = _allData;
+    filename = 'semua-penilaian.csv';
+  } else if (type === 'kelas7') {
+    data = _kelas7Data;
+    filename = 'top10-kelas7.csv';
+  } else {
+    data = _kelas8Data;
+    filename = 'top10-kelas8.csv';
+  }
+  if (!data || data.length === 0) { showToast('⚠ Tidak ada data untuk di-export.'); return; }
+
+  var header = 'No,Nama,Kelas,Divisi,Rata-rata,Rekomendasi';
+  var rows = data.map(function(item, idx) {
+    return [
+      idx + 1,
+      '"' + String(item.nama).replace(/"/g, '""') + '"',
+      item.kelas,
+      '"' + String(item.divisi).replace(/"/g, '""') + '"',
+      item.rataRata,
+      '"' + item.kategori + '"'
+    ].join(',');
+  });
+
+  var csv = header + '\n' + rows.join('\n');
+  // Add BOM for Excel compatibility
+  var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV berhasil diunduh.');
+}
+
 function showToast(msg) {
   var t = document.getElementById('toast');
   t.textContent = msg;
@@ -149,8 +219,8 @@ function showToast(msg) {
 
 async function loadData() {
   try {
-    var resp = await fetch(GAS_URL + '?action=getSummary');
-    var result = await resp.json();
+    var url = GAS_URL + '?action=getSummary';
+    var result = await cachedFetch('summary', url);
     console.log('[Summary] Data:', result);
 
     document.getElementById('loading').hidden = true;
@@ -165,27 +235,30 @@ async function loadData() {
       return parseFloat(b.rataRata) - parseFloat(a.rataRata);
     });
 
+    _allData = sorted;
+
     // Show all data
     document.getElementById('section-all').hidden = false;
     renderAllTable(sorted);
 
     // Filter kelas 7A/7B
-    var kelas7 = sorted.filter(function(item) { return isKelas7(item.kelas); }).slice(0, 10);
-    if (kelas7.length > 0) {
+    _kelas7Data = sorted.filter(function(item) { return isKelas7(item.kelas); }).slice(0, 10);
+    if (_kelas7Data.length > 0) {
       document.getElementById('section-kelas7').hidden = false;
-      renderTopTable('table-kelas7', kelas7);
+      renderTopTable('table-kelas7', _kelas7Data);
     }
 
     // Filter kelas 8A/8B
-    var kelas8 = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 10);
-    if (kelas8.length > 0) {
+    _kelas8Data = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 10);
+    if (_kelas8Data.length > 0) {
       document.getElementById('section-kelas8').hidden = false;
-      renderTopTable('table-kelas8', kelas8);
+      renderTopTable('table-kelas8', _kelas8Data);
     }
 
   } catch (err) {
     console.error('[Summary] Error:', err);
-    document.getElementById('loading').innerHTML = '<p style="color:var(--danger);">⚠ Gagal memuat data: ' + err.message + '</p>';
+    document.getElementById('loading').innerHTML =
+      '<div style="text-align:center;padding:1rem;"><p style="color:var(--danger);margin-bottom:.75rem;">⚠ Gagal memuat data.</p><button class="btn btn-primary" onclick="location.reload()">🔄 Coba Lagi</button></div>';
   }
 }
 

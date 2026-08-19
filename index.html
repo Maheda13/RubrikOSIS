@@ -9,7 +9,7 @@
 <body>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzOj5wJAmDxlC7EIr8asJVbdR_6nq8yYFu8ddrUt4UuxdJhbjs5JigugolDbYUj_49eVg/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzogx6iAI8A2XZf2CxEgUh6LvPTu2xKtIBT2pHoKqMc6wWb2sEdOH2FuJSQkUlVNhKv3g/exec';
 </script>
 
 <header>
@@ -22,6 +22,29 @@
 </header>
 
 <main id="app">
+
+  <!-- ─── Progress Bar ────────────────────────────────────────────────── -->
+  <div class="progress-bar">
+    <div class="progress-step active" id="prog-1">
+      <div class="progress-circle">1</div>
+      <span class="progress-label">Data</span>
+    </div>
+    <div class="progress-line" id="line-1"></div>
+    <div class="progress-step" id="prog-2">
+      <div class="progress-circle">2</div>
+      <span class="progress-label">Pertanyaan</span>
+    </div>
+    <div class="progress-line" id="line-2"></div>
+    <div class="progress-step" id="prog-3">
+      <div class="progress-circle">3</div>
+      <span class="progress-label">Studi Kasus</span>
+    </div>
+    <div class="progress-line" id="line-3"></div>
+    <div class="progress-step" id="prog-4">
+      <div class="progress-circle">4</div>
+      <span class="progress-label">Ringkasan</span>
+    </div>
+  </div>
 
   <!-- ─── STEP 1: Data Kandidat ─────────────────────────────────────── -->
   <section id="step1" class="step active">
@@ -142,7 +165,19 @@ function esc(v) {
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]
   );
 }
+
+// ─── Client-side Cache ────────────────────────────────────────────────
+const _cache = {};
+async function cachedFetch(key, url) {
+  if (_cache[key]) return _cache[key];
+  const resp = await fetch(url);
+  const data = await resp.json();
+  _cache[key] = data;
+  return data;
+}
+function clearCache() { Object.keys(_cache).forEach(k => delete _cache[k]); }
 </script>
+
 <script>
 (function() {
   const nameInput     = document.getElementById('nama');
@@ -182,7 +217,6 @@ function esc(v) {
 
   async function lookup() {
     const name = nameInput.value.trim();
-    console.log('[Lookup] Mencari nama:', name, '| URL:', GAS_URL + '?action=getRegistration&nama=' + encodeURIComponent(name));
     if (!name) { box.hidden = true; return; }
 
     box.hidden = false;
@@ -190,21 +224,18 @@ function esc(v) {
     details.innerHTML = '';
 
     try {
-      const resp = await fetch(GAS_URL + '?action=getRegistration&nama=' + encodeURIComponent(name));
-      const result = await resp.json();
-      console.log('[Lookup] Response GAS:', JSON.stringify(result, null, 2));
+      const url = GAS_URL + '?action=getRegistration&nama=' + encodeURIComponent(name);
+      const result = await cachedFetch('reg:' + name.toLowerCase(), url);
 
       if (!result.success) throw new Error(result.error || 'Gagal membaca data.');
 
       if (!result.data) {
         status.textContent = 'Data tidak ditemukan';
-        if (result.source) console.log('[Lookup] Source info:', JSON.stringify(result.source, null, 2));
         return;
       }
 
       status.textContent = '✓ Ditemukan';
       const d = result.data;
-      console.log('[Lookup] Data ditemukan:', d);
 
       // Auto-fill kelas
       if (classInput) {
@@ -248,9 +279,8 @@ function esc(v) {
   async function searchSuggestions(query) {
     if (!query || query.length < 1) { suggestions.hidden = true; return; }
     try {
-      const resp = await fetch(GAS_URL + '?action=searchNames&q=' + encodeURIComponent(query));
-      const result = await resp.json();
-      console.log('[Search] Query:', query, '| Hasil:', result.names);
+      const url = GAS_URL + '?action=searchNames&q=' + encodeURIComponent(query);
+      const result = await cachedFetch('search:' + query.toLowerCase(), url);
       if (!result.success || !result.names || result.names.length === 0) {
         suggestions.hidden = true;
         return;
@@ -260,7 +290,6 @@ function esc(v) {
       ).join('');
       suggestions.hidden = false;
     } catch (err) {
-      console.error('[Search] Error:', err);
       suggestions.hidden = true;
     }
   }
@@ -498,6 +527,16 @@ function goToStep(step) {
     ];
     const missing = allIds.filter(id => !scores[id]);
     if (missing.length > 0) { showToast('⚠️ Masih ada ' + missing.length + ' aspek yang belum dinilai.'); return; }
+  }
+
+  // Update progress bar
+  for (let i = 1; i <= 4; i++) {
+    const prog = document.getElementById('prog-' + i);
+    const line = document.getElementById('line-' + i);
+    prog.classList.remove('active', 'done');
+    if (i < step) { prog.classList.add('done'); }
+    else if (i === step) { prog.classList.add('active'); }
+    if (line) { line.classList.toggle('done', i < step); }
   }
 
   document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
