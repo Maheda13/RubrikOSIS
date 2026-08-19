@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rangkuman Penilaian — OSIS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzOj5wJAmDxlC7EIr8asJVbdR_6nq8yYFu8ddrUt4UuxdJhbjs5JigugolDbYUj_49eVg/exec';
+</script>
+
+<header>
+  <h1>📊 Rangkuman Penilaian Wawancara OSIS</h1>
+  <p class="subtitle">Daftar Rekomendasi Calon Pengurus OSIS</p>
+  <div class="header-actions">
+    <a href="index.html" class="btn-header">← Kembali ke Penilaian</a>
+  </div>
+</header>
+
+<main id="app" style="max-width:950px;">
+
+  <!-- Loading -->
+  <div id="loading" class="card" style="text-align:center;padding:2rem;">
+    <p>⏳ Memuat data...</p>
+  </div>
+
+  <!-- Ringkasan Umum -->
+  <section id="section-all" hidden>
+    <div class="card">
+      <h2 style="margin-bottom:1rem;">📋 Semua Data Penilaian</h2>
+      <div class="table-wrapper">
+        <table class="summary-table-full" id="table-all">
+          <thead>
+            <tr><th>No</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Rata-rata</th><th>Rekomendasi</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Top 10 Kelas 7 -->
+  <section id="section-kelas7" hidden>
+    <div class="card">
+      <h2 style="margin-bottom:1rem;">🏅 Top 10 — Kelas 7 (A & B)</h2>
+      <div class="table-wrapper">
+        <table class="summary-table-full" id="table-kelas7">
+          <thead>
+            <tr><th>Peringkat</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Rata-rata</th><th>Rekomendasi</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Top 10 Kelas 8 -->
+  <section id="section-kelas8" hidden>
+    <div class="card">
+      <h2 style="margin-bottom:1rem;">🏅 Top 10 — Kelas 8 (A & B)</h2>
+      <div class="table-wrapper">
+        <table class="summary-table-full" id="table-kelas8">
+          <thead>
+            <tr><th>Peringkat</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Rata-rata</th><th>Rekomendasi</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Empty state -->
+  <div id="empty-state" hidden class="card" style="text-align:center;padding:2rem;">
+    <p style="color:var(--text-muted);">Belum ada data penilaian.</p>
+  </div>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]
+  );
+}
+
+const KATEGORI_COLORS = {
+  'Sangat Direkomendasikan': '#27ae60',
+  'Direkomendasikan':        '#2980b9',
+  'Dipertimbangkan':         '#f39c12',
+  'Perlu Pertimbangan':      '#e67e22',
+  'Tidak Direkomendasikan':  '#c0392b'
+};
+
+function kategoriBadge(kategori) {
+  var color = KATEGORI_COLORS[kategori] || '#999';
+  return '<span class="kategori-badge" style="background:' + color + '">' + esc(kategori) + '</span>';
+}
+
+function isKelas7(kelas) {
+  var k = String(kelas).trim().toUpperCase();
+  return k === '7A' || k === '7B' || k === '7';
+}
+
+function isKelas8(kelas) {
+  var k = String(kelas).trim().toUpperCase();
+  return k === '8A' || k === '8B' || k === '8';
+}
+
+function renderAllTable(data) {
+  var tbody = document.querySelector('#table-all tbody');
+  tbody.innerHTML = data.map(function(item, idx) {
+    return '<tr>'
+      + '<td>' + (idx + 1) + '</td>'
+      + '<td><strong>' + esc(item.nama) + '</strong></td>'
+      + '<td>' + esc(item.kelas) + '</td>'
+      + '<td>' + esc(item.divisi) + '</td>'
+      + '<td><strong>' + esc(item.rataRata) + '</strong></td>'
+      + '<td>' + kategoriBadge(item.kategori) + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function renderTopTable(tableId, data) {
+  var tbody = document.querySelector('#' + tableId + ' tbody');
+  tbody.innerHTML = data.map(function(item, idx) {
+    return '<tr>'
+      + '<td><strong>' + (idx + 1) + '</strong></td>'
+      + '<td><strong>' + esc(item.nama) + '</strong></td>'
+      + '<td>' + esc(item.kelas) + '</td>'
+      + '<td>' + esc(item.divisi) + '</td>'
+      + '<td><strong>' + esc(item.rataRata) + '</strong></td>'
+      + '<td>' + kategoriBadge(item.kategori) + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3500);
+}
+
+async function loadData() {
+  try {
+    var resp = await fetch(GAS_URL + '?action=getSummary');
+    var result = await resp.json();
+    console.log('[Summary] Data:', result);
+
+    document.getElementById('loading').hidden = true;
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      document.getElementById('empty-state').hidden = false;
+      return;
+    }
+
+    // Sort by rata-rata descending
+    var sorted = result.data.sort(function(a, b) {
+      return parseFloat(b.rataRata) - parseFloat(a.rataRata);
+    });
+
+    // Show all data
+    document.getElementById('section-all').hidden = false;
+    renderAllTable(sorted);
+
+    // Filter kelas 7A/7B
+    var kelas7 = sorted.filter(function(item) { return isKelas7(item.kelas); }).slice(0, 10);
+    if (kelas7.length > 0) {
+      document.getElementById('section-kelas7').hidden = false;
+      renderTopTable('table-kelas7', kelas7);
+    }
+
+    // Filter kelas 8A/8B
+    var kelas8 = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 10);
+    if (kelas8.length > 0) {
+      document.getElementById('section-kelas8').hidden = false;
+      renderTopTable('table-kelas8', kelas8);
+    }
+
+  } catch (err) {
+    console.error('[Summary] Error:', err);
+    document.getElementById('loading').innerHTML = '<p style="color:var(--danger);">⚠ Gagal memuat data: ' + err.message + '</p>';
+  }
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>
