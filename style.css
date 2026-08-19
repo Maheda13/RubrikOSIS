@@ -36,6 +36,56 @@ header {
 }
 header h1 { font-size: 1.5rem; font-weight: 700; }
 header .subtitle { opacity: .85; font-size: .9rem; margin-top: .25rem; }
+.header-actions { margin-top: 1rem; }
+.btn-header {
+  background: rgba(255,255,255,.2);
+  color: white;
+  border: 1.5px solid rgba(255,255,255,.4);
+  padding: .5rem 1.25rem;
+  border-radius: 8px;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-header:hover { background: rgba(255,255,255,.35); }
+
+/* ─── Summary Table ──────────────────────────────────────────────────── */
+.summary-modal-content {
+  max-width: 950px;
+  max-height: 85vh;
+}
+.summary-table-wrapper { overflow-x: auto; }
+.summary-table-full {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+.summary-table-full th,
+.summary-table-full td {
+  padding: .5rem .65rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.summary-table-full th {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: var(--text-muted);
+  position: sticky;
+  top: 0;
+}
+.summary-table-full tr:hover { background: #f8fafc; }
+.kategori-badge {
+  display: inline-block;
+  padding: .15rem .5rem;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: .75rem;
+  white-space: nowrap;
+}
+.summary-empty { text-align: center; padding: 2rem; color: var(--text-muted); }
 
 /* ─── Main ───────────────────────────────────────────────────────────── */
 main {
