@@ -66,7 +66,7 @@
           <select id="divisi">
             <option value="">-- Pilih Divisi --</option>
             <option value="PDLH">PDLH</option>
-            <option value="Kesehatan">Kesejahteraan</option>
+            <option value="Kesejahteraan">Kesejahteraan</option>
             <option value="Kesenian dan Olahraga">Kesenian dan Olahraga</option>
             <option value="Keamanan">Keamanan</option>
             <option value="Ibadah">Ibadah</option>
@@ -144,6 +144,13 @@
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- Registration Lookup                                                 -->
 <!-- ═══════════════════════════════════════════════════════════════════ -->
+<script>
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]
+  );
+}
+</script>
 <script>
 (function() {
   const nameInput     = document.getElementById('nama');
