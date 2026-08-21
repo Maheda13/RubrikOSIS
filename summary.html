@@ -258,14 +258,14 @@ async function loadData() {
     renderAllTable(sorted);
 
     // Filter kelas 7A/7B
-    _kelas7Data = sorted.filter(function(item) { return isKelas7(item.kelas); }).slice(0, 10);
+    _kelas7Data = sorted.filter(function(item) { return isKelas7(item.kelas); }).slice(0, 15);
     if (_kelas7Data.length > 0) {
       document.getElementById('section-kelas7').hidden = false;
       renderTopTable('table-kelas7', _kelas7Data);
     }
 
     // Filter kelas 8A/8B — Top 15
-    _kelas8Data = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 15);
+    _kelas8Data = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 20);
     if (_kelas8Data.length > 0) {
       document.getElementById('section-kelas8').hidden = false;
       renderTopTable('table-kelas8', _kelas8Data);
