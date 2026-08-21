@@ -70,6 +70,15 @@
         <div id="registration-details" class="registration-details"></div>
       </div>
 
+      <!-- Panel info skor tes tulis -->
+      <div id="tes-tulis-info" class="tes-tulis-badge" hidden>
+        <div class="reference-heading">
+          <strong>📝 Skor Tes Tulis</strong>
+          <span id="tes-tulis-status"></span>
+        </div>
+        <div id="tes-tulis-details" class="registration-details"></div>
+      </div>
+
       <div class="form-row">
         <div class="form-group">
           <label for="kelas">Kelas</label>
@@ -176,6 +185,9 @@ async function cachedFetch(key, url) {
   return data;
 }
 function clearCache() { Object.keys(_cache).forEach(k => delete _cache[k]); }
+
+// ─── Tes Tulis Data (stored globally) ────────────────────────────────
+let _tesTulisData = null;
 </script>
 
 <script>
@@ -268,6 +280,36 @@ function clearCache() { Object.keys(_cache).forEach(k => delete _cache[k]); }
         }
       }
       details.innerHTML = html;
+
+      // ─── Lookup Skor Tes Tulis ──────────────────────────────────────
+      const tesBox = document.getElementById('tes-tulis-info');
+      const tesStatus = document.getElementById('tes-tulis-status');
+      const tesDetails = document.getElementById('tes-tulis-details');
+      if (tesBox) {
+        tesBox.hidden = false;
+        tesStatus.textContent = 'Mencari...';
+        tesDetails.innerHTML = '';
+        try {
+          const tesUrl = GAS_URL + '?action=getTesTulis&nama=' + encodeURIComponent(name);
+          const tesResult = await cachedFetch('tes:' + name.toLowerCase(), tesUrl);
+          if (tesResult.success && tesResult.data && tesResult.data.nilai) {
+            const t = tesResult.data;
+            _tesTulisData = t;
+            tesStatus.textContent = '✓ Ditemukan';
+            tesDetails.innerHTML =
+              '<div class="reference-item"><b>Skor PG</b><span>' + esc(t.skorPG) + ' / 60</span></div>' +
+              '<div class="reference-item"><b>Skor Uraian</b><span>' + esc(t.skorUraian) + ' / 20</span></div>' +
+              '<div class="reference-item"><b>Nilai Akhir</b><span><strong>' + esc(t.nilai) + ' / 100</strong></span></div>';
+          } else {
+            _tesTulisData = null;
+            tesStatus.textContent = 'Belum ada data tes tulis';
+          }
+        } catch (tesErr) {
+          _tesTulisData = null;
+          tesStatus.textContent = '⚠ Gagal memuat data tes';
+          console.error('[Lookup] Tes Tulis Error:', tesErr);
+        }
+      }
 
     } catch (err) {
       status.textContent = '⚠ Gagal terhubung';
@@ -561,14 +603,26 @@ function renderRingkasan() {
   });
 
   const all = [...qScores, ...STUDI_KASUS.flatMap(sk => sk.aspek.map(a => scores[a.id] || 0))];
-  const rataRata = (all.reduce((a,b) => a+b, 0) / all.length).toFixed(1);
-  const kategori = KATEGORI.find(k => rataRata >= k.min && rataRata <= k.max);
+  const rataRata = parseFloat((all.reduce((a,b) => a+b, 0) / all.length).toFixed(1));
+
+  // Skor Tes Tulis (skala 0-100)
+  const tesSkor100 = (_tesTulisData && _tesTulisData.nilai) ? parseFloat(_tesTulisData.nilai) : null;
+
+  // Skor Akhir = (Wawancara × 0.6) + (TesTulis/100 × 10 × 0.4)
+  let skorAkhir = null;
+  if (tesSkor100 !== null) {
+    skorAkhir = (rataRata * 0.6) + ((tesSkor100 / 100) * 10 * 0.4);
+    skorAkhir = parseFloat(skorAkhir.toFixed(1));
+  }
+
+  const skorAkhirLabel = skorAkhir !== null ? skorAkhir : rataRata;
+  const kategori = KATEGORI.find(k => skorAkhirLabel >= k.min && skorAkhirLabel <= k.max);
 
   c.innerHTML = `
     <div class="card summary-card">
       <div class="summary-header">
-        <h3>${nama}</h3>
-        <p>${kelas} — ${divisi}</p>
+        <h3>${esc(nama)}</h3>
+        <p>${esc(kelas)} — ${esc(divisi)}</p>
       </div>
       <div class="summary-section">
         <h4>📝 Pertanyaan Umum (Rata-rata: ${qAvg})</h4>
@@ -586,11 +640,22 @@ function renderRingkasan() {
           </table>
         </div>
       `).join('')}
+      <div class="score-summary-table" style="margin:1.25rem 0;">
+        <table class="summary-table">
+          <thead><tr><th>Komponen Penilaian</th><th>Nilai</th></tr></thead>
+          <tbody>
+            <tr><td>Nilai Wawancara (×0.6)</td><td class="skor-cell">${rataRata}</td></tr>
+            <tr><td>Nilai Tes Tulis (×0.4)</td><td class="skor-cell">${tesSkor100 !== null ? tesSkor100 + '/100' : '-'}</td></tr>
+            ${tesSkor100 !== null ? `<tr><td><strong>Nilai Akhir</strong></td><td class="skor-cell" style="font-size:1.1rem;"><strong>${skorAkhir}</strong></td></tr>` : ''}
+          </tbody>
+        </table>
+      </div>
       <div class="summary-final">
         <div class="final-score">
-          <span class="final-label">Rata-rata Keseluruhan</span>
-          <span class="final-number">${rataRata}</span>
+          <span class="final-label">Skor Akhir</span>
+          <span class="final-number">${tesSkor100 !== null ? skorAkhir : rataRata + ' *'}</span>
           <span class="final-category" style="background:${kategori?kategori.color:'#999'}">${kategori?kategori.label:'-'}</span>
+          ${tesSkor100 === null ? '<br><span style="font-size:.75rem;color:var(--text-muted);">* Tanpa data tes tulis</span>' : ''}
         </div>
       </div>
       <div class="form-group" style="margin-top:1rem">
@@ -616,7 +681,9 @@ async function submitPenilaian() {
     ...STUDI_KASUS.flatMap(sk => sk.aspek.map(a => scores[a.id] || 0))
   ];
   const rataRata = (all.reduce((a,b) => a+b, 0) / all.length).toFixed(1);
-  const kategori = KATEGORI.find(k => rataRata >= k.min && rataRata <= k.max);
+  const tesSkor100 = (_tesTulisData && _tesTulisData.nilai) ? parseFloat(_tesTulisData.nilai) : null;
+  const skorAkhir = tesSkor100 !== null ? parseFloat(((parseFloat(rataRata) * 0.6) + ((tesSkor100 / 100) * 10 * 0.4)).toFixed(1)) : null;
+  const kategori = KATEGORI.find(k => skorAkhir !== null ? (skorAkhir >= k.min && skorAkhir <= k.max) : (parseFloat(rataRata) >= k.min && parseFloat(rataRata) <= k.max));
   const nama = document.getElementById('nama').value.trim();
 
   try {
@@ -631,7 +698,9 @@ async function submitPenilaian() {
         'Data sebelumnya:\n' +
         'Kelas: ' + ex.kelas + '\n' +
         'Divisi: ' + ex.divisi + '\n' +
-        'Rata-rata: ' + ex.rataRata + '\n\n' +
+        'Nilai Wawancara: ' + ex.rataRata + '\n' +
+        'Skor Tes Tulis: ' + ex.skorTesTulis + '\n' +
+        'Skor Akhir: ' + ex.skorAkhir + '\n\n' +
         'Tetap ingin menyimpan ulang?'
       );
       if (!proceed) {
@@ -648,6 +717,8 @@ async function submitPenilaian() {
       divisi: document.getElementById('divisi').value,
       skor:   Object.assign({}, scores),
       rataRata: parseFloat(rataRata),
+      skorTesTulis: tesSkor100,
+      skorAkhir: skorAkhir,
       kategori: kategori ? kategori.label : '-',
       catatan:  document.getElementById('catatan') ? document.getElementById('catatan').value : ''
     };
@@ -681,11 +752,14 @@ function resetForm() {
   const ct = document.getElementById('catatan');
   if (ct) ct.value = '';
   Object.keys(scores).forEach(k => delete scores[k]);
+  _tesTulisData = null;
   document.querySelectorAll('.score-btn.active').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.skor-display').forEach(d => { d.textContent = '-'; d.classList.remove('show'); });
-  // Hide registration panel
+  // Hide panels
   const box = document.getElementById('registration-reference');
   if (box) box.hidden = true;
+  const tesBox = document.getElementById('tes-tulis-info');
+  if (tesBox) tesBox.hidden = true;
 }
 
 // ─── RUBRIK MODAL ──────────────────────────────────────────────────────

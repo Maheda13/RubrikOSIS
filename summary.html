@@ -43,7 +43,7 @@
       <div class="table-wrapper">
         <table class="summary-table-full" id="table-all">
           <thead>
-            <tr><th>No</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Rata-rata</th><th>Rekomendasi</th></tr>
+            <tr><th>No</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Nilai Wawancara</th><th>Nilai Tes Tulis</th><th>Nilai Akhir</th><th>Rekomendasi</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -55,13 +55,13 @@
   <section id="section-kelas7" hidden>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-        <h2>🏅 Rekomendasi — 10 Santri Kelas 7 </h2>
+        <h2>🏅 Top 10 — Kelas 7 (A & B)</h2>
         <button class="btn-export" onclick="exportCSV('kelas7')">⬇ Export CSV</button>
       </div>
       <div class="table-wrapper">
         <table class="summary-table-full" id="table-kelas7">
           <thead>
-            <tr><th>Peringkat</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Rata-rata</th><th>Rekomendasi</th></tr>
+            <tr><th>Peringkat</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Nilai Wawancara</th><th>Nilai Tes Tulis</th><th>Nilai Akhir</th><th>Rekomendasi</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -73,13 +73,13 @@
   <section id="section-kelas8" hidden>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-        <h2>🏅 Rekomendasi — 10 Santri Kelas 8</h2>
+        <h2>🏅 Top 10 — Kelas 8 (A & B)</h2>
         <button class="btn-export" onclick="exportCSV('kelas8')">⬇ Export CSV</button>
       </div>
       <div class="table-wrapper">
         <table class="summary-table-full" id="table-kelas8">
           <thead>
-            <tr><th>Peringkat</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Rata-rata</th><th>Rekomendasi</th></tr>
+            <tr><th>Peringkat</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Nilai Wawancara</th><th>Nilai Tes Tulis</th><th>Nilai Akhir</th><th>Rekomendasi</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -149,7 +149,9 @@ function renderAllTable(data) {
       + '<td><strong>' + esc(item.nama) + '</strong></td>'
       + '<td>' + esc(item.kelas) + '</td>'
       + '<td>' + esc(item.divisi) + '</td>'
-      + '<td><strong>' + esc(item.rataRata) + '</strong></td>'
+      + '<td><strong>' + esc(item.rataRata || '-') + '</strong></td>'
+      + '<td>' + esc(item.skorTesTulis || '-') + '</td>'
+      + '<td><strong>' + esc(item.skorAkhir || '-') + '</strong></td>'
       + '<td>' + kategoriBadge(item.kategori) + '</td>'
       + '</tr>';
   }).join('');
@@ -163,7 +165,9 @@ function renderTopTable(tableId, data) {
       + '<td><strong>' + esc(item.nama) + '</strong></td>'
       + '<td>' + esc(item.kelas) + '</td>'
       + '<td>' + esc(item.divisi) + '</td>'
-      + '<td><strong>' + esc(item.rataRata) + '</strong></td>'
+      + '<td><strong>' + esc(item.rataRata || '-') + '</strong></td>'
+      + '<td>' + esc(item.skorTesTulis || '-') + '</td>'
+      + '<td><strong>' + esc(item.skorAkhir || '-') + '</strong></td>'
       + '<td>' + kategoriBadge(item.kategori) + '</td>'
       + '</tr>';
   }).join('');
@@ -184,14 +188,16 @@ function exportCSV(type) {
   }
   if (!data || data.length === 0) { showToast('⚠ Tidak ada data untuk di-export.'); return; }
 
-  var header = 'No,Nama,Kelas,Divisi,Rata-rata,Rekomendasi';
+  var header = 'No,Nama,Kelas,Divisi,Nilai Wawancara,Nilai Tes Tulis,Nilai Akhir,Rekomendasi';
   var rows = data.map(function(item, idx) {
     return [
       idx + 1,
       '"' + String(item.nama).replace(/"/g, '""') + '"',
       item.kelas,
       '"' + String(item.divisi).replace(/"/g, '""') + '"',
-      item.rataRata,
+      item.rataRata || '',
+      item.skorTesTulis || '',
+      item.skorAkhir || '',
       '"' + item.kategori + '"'
     ].join(',');
   });
@@ -230,9 +236,11 @@ async function loadData() {
       return;
     }
 
-    // Sort by rata-rata descending
+    // Sort by skorAkhir descending (fallback to rataRata)
     var sorted = result.data.sort(function(a, b) {
-      return parseFloat(b.rataRata) - parseFloat(a.rataRata);
+      var valA = parseFloat(a.skorAkhir) || parseFloat(a.rataRata) || 0;
+      var valB = parseFloat(b.skorAkhir) || parseFloat(b.rataRata) || 0;
+      return valB - valA;
     });
 
     _allData = sorted;

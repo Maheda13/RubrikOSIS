@@ -214,6 +214,14 @@ main { max-width: 780px; margin: 1.5rem auto; padding: 0 1rem 3rem; }
   background: linear-gradient(135deg, #eff6ff, #f0f9ff);
   animation: fadeIn .25s ease;
 }
+.tes-tulis-badge {
+  margin-bottom: 1rem;
+  padding: .85rem 1rem;
+  border: 1.5px solid #86efac;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  animation: fadeIn .25s ease;
+}
 .reference-heading {
   display: flex;
   justify-content: space-between;
