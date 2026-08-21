@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Final — Lolos OSIS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyVDfJO-s34k2q6Z4aWTlvbgh28OonvqyjpatuKlXwi29vmREcX7qyE8UYfvuX5vyGMfw/exec';
+</script>
+
+<header>
+  <h1>📋 Final — Calon Pengurus OSIS</h1>
+  <p class="subtitle">Tentukan Siapa yang Lolos</p>
+  <nav class="tab-nav">
+    <a href="index.html" class="tab-item">📝 Penilaian</a>
+    <a href="summary.html" class="tab-item">📊 Rangkuman</a>
+    <a href="final.html" class="tab-item active">✅ Final</a>
+  </nav>
+</header>
+
+<main id="app" style="max-width:1100px;">
+
+  <!-- Loading -->
+  <div id="loading" class="card">
+    <div style="display:grid;gap:.65rem;">
+      <div class="skeleton skeleton-line w60"></div>
+      <div class="skeleton skeleton-line w100"></div>
+      <div class="skeleton skeleton-block"></div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls" class="card" hidden style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="selectAll()">☑ Pilih Semua</button>
+      <button class="btn btn-secondary" onclick="deselectAll()">☐ Hapus Pilihan</button>
+      <span id="selected-count" style="font-size:.85rem;color:var(--text-muted);">0 terpilih</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <button class="btn btn-primary" onclick="showFinalList()">📋 Tampilkan Daftar Lolos</button>
+      <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <!-- Search & Filter -->
+  <div id="filter-bar" class="card" hidden style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+    <div class="form-group" style="margin:0;flex:1;min-width:200px;">
+      <input type="text" id="search-input" placeholder="🔍 Cari nama..." oninput="filterTable()">
+    </div>
+    <div class="form-group" style="margin:0;min-width:140px;">
+      <select id="filter-kelas" onchange="filterTable()">
+        <option value="">Semua Kelas</option>
+        <option value="7A">7A</option><option value="7B">7B</option>
+        <option value="7C">7C</option><option value="7D">7D</option>
+        <option value="8A">8A</option><option value="8B">8B</option>
+        <option value="8C">8C</option><option value="8D">8D</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;min-width:160px;">
+      <select id="filter-divisi" onchange="filterTable()">
+        <option value="">Semua Divisi</option>
+        <option value="PDLH">PDLH</option>
+        <option value="Kesejahteraan">Kesejahteraan</option>
+        <option value="Kesenian dan Olahraga">Kesenian dan Olahraga</option>
+        <option value="Keamanan">Keamanan</option>
+        <option value="Ibadah">Ibadah</option>
+        <option value="Humas">Humas</option>
+        <option value="Bahasa">Bahasa</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;min-width:160px;">
+      <select id="filter-rekomendasi" onchange="filterTable()">
+        <option value="">Semua Rekomendasi</option>
+        <option value="Sangat Direkomendasikan">Sangat Direkomendasikan</option>
+        <option value="Direkomendasikan">Direkomendasikan</option>
+        <option value="Dipertimbangkan">Dipertimbangkan</option>
+        <option value="Perlu Pertimbangan">Perlu Pertimbangan</option>
+        <option value="Tidak Direkomendasikan">Tidak Direkomendasikan</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <section id="section-table" hidden>
+    <div class="card" style="padding:.75rem;">
+      <div class="table-wrapper">
+        <table class="summary-table-full" id="table-final">
+          <thead>
+            <tr>
+              <th style="width:40px;text-align:center;">
+                <input type="checkbox" id="check-all" onchange="toggleCheckAll(this.checked)" title="Pilih Semua">
+              </th>
+              <th>No</th><th>Nama</th><th>Kelas</th><th>Divisi</th>
+              <th>Nilai Wawancara</th><th>Nilai Tes Tulis</th><th>Nilai Akhir</th>
+              <th>Rekomendasi</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Empty state -->
+  <div id="empty-state" hidden class="card" style="text-align:center;padding:2rem;">
+    <p style="color:var(--text-muted);">📭 Belum ada data penilaian.</p>
+  </div>
+
+</main>
+
+<!-- Modal Daftar Lolos -->
+<div id="modal-lolos" class="modal" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()" style="max-width:650px;">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <h3 id="modal-title">📋 Daftar Siswa yang Lolos</h3>
+    <div id="modal-body" style="margin-top:1rem;"></div>
+    <div style="margin-top:1.25rem;text-align:right;">
+      <button class="btn btn-primary" onclick="exportFinalCSV()">⬇ Export CSV Daftar Lolos</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]
+  );
+}
+
+const _cache = {};
+async function cachedFetch(key, url) {
+  if (_cache[key]) return _cache[key];
+  const resp = await fetch(url);
+  const data = await resp.json();
+  _cache[key] = data;
+  return data;
+}
+
+const KATEGORI_COLORS = {
+  'Sangat Direkomendasikan': '#27ae60',
+  'Direkomendasikan':        '#2980b9',
+  'Dipertimbangkan':         '#f39c12',
+  'Perlu Pertimbangan':      '#e67e22',
+  'Tidak Direkomendasikan':  '#c0392b'
+};
+
+function kategoriBadge(kategori) {
+  var color = KATEGORI_COLORS[kategori] || '#999';
+  return '<span class="kategori-badge" style="background:' + color + '">' + esc(kategori) + '</span>';
+}
+
+// ─── State ────────────────────────────────────────────────────────────
+let _allData = [];
+let _selectedNames = {}; // key = nama (normalized), value = true
+
+// Load saved selections from localStorage
+function loadSelections() {
+  try {
+    var saved = localStorage.getItem('osis_final_selections');
+    if (saved) _selectedNames = JSON.parse(saved);
+  } catch (e) { _selectedNames = {}; }
+}
+
+function saveSelections() {
+  try { localStorage.setItem('osis_final_selections', JSON.stringify(_selectedNames)); } catch (e) {}
+}
+
+function normalizeKey(s) { return String(s).trim().toLowerCase(); }
+
+// ─── Render ───────────────────────────────────────────────────────────
+function renderTable(data) {
+  var tbody = document.querySelector('#table-final tbody');
+  tbody.innerHTML = data.map(function(item, idx) {
+    var key = normalizeKey(item.nama);
+    var checked = _selectedNames[key] ? 'checked' : '';
+    return '<tr>'
+      + '<td style="text-align:center;"><input type="checkbox" class="row-check" data-nama="' + esc(item.nama) + '" data-key="' + esc(key) + '" ' + checked + ' onchange="toggleSelect(this)"></td>'
+      + '<td>' + (idx + 1) + '</td>'
+      + '<td><strong>' + esc(item.nama) + '</strong></td>'
+      + '<td>' + esc(item.kelas) + '</td>'
+      + '<td>' + esc(item.divisi) + '</td>'
+      + '<td>' + esc(item.rataRata || '-') + '</td>'
+      + '<td>' + esc(item.skorTesTulis || '-') + '</td>'
+      + '<td><strong>' + esc(item.skorAkhir || '-') + '</strong></td>'
+      + '<td>' + kategoriBadge(item.kategori) + '</td>'
+      + '</tr>';
+  }).join('');
+  updateCount();
+}
+
+function updateCount() {
+  var count = Object.keys(_selectedNames).filter(function(k) { return _selectedNames[k]; }).length;
+  document.getElementById('selected-count').textContent = count + ' terpilih';
+}
+
+// ─── Selection Logic ──────────────────────────────────────────────────
+function toggleSelect(cb) {
+  var key = cb.dataset.key;
+  if (cb.checked) {
+    _selectedNames[key] = true;
+  } else {
+    delete _selectedNames[key];
+  }
+  saveSelections();
+  updateCount();
+}
+
+function toggleCheckAll(checked) {
+  var boxes = document.querySelectorAll('#table-final .row-check');
+  boxes.forEach(function(cb) {
+    cb.checked = checked;
+    var key = cb.dataset.key;
+    if (checked) { _selectedNames[key] = true; }
+    else { delete _selectedNames[key]; }
+  });
+  saveSelections();
+  updateCount();
+}
+
+function selectAll() {
+  var filtered = getFilteredData();
+  filtered.forEach(function(item) { _selectedNames[normalizeKey(item.nama)] = true; });
+  saveSelections();
+  renderTable(filtered);
+  showToast('☑ Semua yang ditampilkan dipilih.');
+}
+
+function deselectAll() {
+  var filtered = getFilteredData();
+  filtered.forEach(function(item) { delete _selectedNames[normalizeKey(item.nama)]; });
+  saveSelections();
+  renderTable(filtered);
+  showToast('☐ Pilihan dihapus.');
+}
+
+// ─── Filter ───────────────────────────────────────────────────────────
+function getFilteredData() {
+  var q = document.getElementById('search-input').value.trim().toLowerCase();
+  var kelas = document.getElementById('filter-kelas').value;
+  var divisi = document.getElementById('filter-divisi').value;
+  var rekomendasi = document.getElementById('filter-rekomendasi').value;
+
+  return _allData.filter(function(item) {
+    if (q && String(item.nama).toLowerCase().indexOf(q) === -1) return false;
+    if (kelas && String(item.kelas).trim().toUpperCase() !== kelas.toUpperCase()) return false;
+    if (divisi && String(item.divisi).trim() !== divisi) return false;
+    if (rekomendasi && item.kategori !== rekomendasi) return false;
+    return true;
+  });
+}
+
+function filterTable() {
+  renderTable(getFilteredData());
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────
+function showFinalList() {
+  var selected = _allData.filter(function(item) { return _selectedNames[normalizeKey(item.nama)]; });
+  if (selected.length === 0) {
+    showToast('⚠ Belum ada siswa yang dipilih.');
+    return;
+  }
+
+  // Sort by skorAkhir descending
+  selected.sort(function(a, b) {
+    return (parseFloat(b.skorAkhir) || 0) - (parseFloat(a.skorAkhir) || 0);
+  });
+
+  document.getElementById('modal-title').textContent = '📋 Daftar Lolos (' + selected.length + ' siswa)';
+  document.getElementById('modal-body').innerHTML =
+    '<div class="table-wrapper"><table class="summary-table-full">' +
+    '<thead><tr><th>No</th><th>Nama</th><th>Kelas</th><th>Divisi</th><th>Nilai Akhir</th><th>Rekomendasi</th></tr></thead>' +
+    '<tbody>' + selected.map(function(item, idx) {
+      return '<tr>'
+        + '<td>' + (idx + 1) + '</td>'
+        + '<td><strong>' + esc(item.nama) + '</strong></td>'
+        + '<td>' + esc(item.kelas) + '</td>'
+        + '<td>' + esc(item.divisi) + '</td>'
+        + '<td><strong>' + esc(item.skorAkhir || '-') + '</strong></td>'
+        + '<td>' + kategoriBadge(item.kategori) + '</td>'
+        + '</tr>';
+    }).join('') +
+    '</tbody></table></div>';
+
+  document.getElementById('modal-lolos').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-lolos')) {
+    document.getElementById('modal-lolos').classList.remove('open');
+  }
+}
+
+// ─── Export ───────────────────────────────────────────────────────────
+function exportCSV() {
+  var filtered = getFilteredData();
+  if (filtered.length === 0) { showToast('⚠ Tidak ada data.'); return; }
+
+  var header = 'No,Nama,Kelas,Divisi,Nilai Wawancara,Nilai Tes Tulis,Nilai Akhir,Rekomendasi,Lolos';
+  var rows = filtered.map(function(item, idx) {
+    var lolos = _selectedNames[normalizeKey(item.nama)] ? 'Ya' : 'Tidak';
+    return [
+      idx + 1,
+      '"' + String(item.nama).replace(/"/g, '""') + '"',
+      item.kelas,
+      '"' + String(item.divisi || '').replace(/"/g, '""') + '"',
+      item.rataRata || '',
+      item.skorTesTulis || '',
+      item.skorAkhir || '',
+      '"' + (item.kategori || '') + '"',
+      lolos
+    ].join(',');
+  });
+  downloadCsv(header, rows, 'final-penilaian.csv');
+}
+
+function exportFinalCSV() {
+  var selected = _allData.filter(function(item) { return _selectedNames[normalizeKey(item.nama)]; });
+  if (selected.length === 0) { showToast('⚠ Tidak ada data.'); return; }
+
+  selected.sort(function(a, b) {
+    return (parseFloat(b.skorAkhir) || 0) - (parseFloat(a.skorAkhir) || 0);
+  });
+
+  var header = 'No,Nama,Kelas,Divisi,Nilai Wawancara,Nilai Tes Tulis,Nilai Akhir,Rekomendasi';
+  var rows = selected.map(function(item, idx) {
+    return [
+      idx + 1,
+      '"' + String(item.nama).replace(/"/g, '""') + '"',
+      item.kelas,
+      '"' + String(item.divisi || '').replace(/"/g, '""') + '"',
+      item.rataRata || '',
+      item.skorTesTulis || '',
+      item.skorAkhir || '',
+      '"' + (item.kategori || '') + '"'
+    ].join(',');
+  });
+  downloadCsv(header, rows, 'daftar-lolos.csv');
+}
+
+function downloadCsv(header, rows, filename) {
+  var csv = header + '\n' + rows.join('\n');
+  var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ CSV berhasil diunduh.');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3500);
+}
+
+// ─── Load Data ────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    var url = GAS_URL + '?action=getSummary';
+    var result = await cachedFetch('summary', url);
+
+    document.getElementById('loading').hidden = true;
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      document.getElementById('empty-state').hidden = false;
+      return;
+    }
+
+    // Sort by skorAkhir descending, those without go to bottom
+    _allData = result.data.sort(function(a, b) {
+      var valA = parseFloat(a.skorAkhir);
+      var valB = parseFloat(b.skorAkhir);
+      var hasA = !isNaN(valA);
+      var hasB = !isNaN(valB);
+      if (hasA && hasB) return valB - valA;
+      if (hasA) return -1;
+      if (hasB) return 1;
+      return (parseFloat(b.rataRata) || 0) - (parseFloat(a.rataRata) || 0);
+    });
+
+    document.getElementById('controls').hidden = false;
+    document.getElementById('filter-bar').hidden = false;
+    document.getElementById('section-table').hidden = false;
+    renderTable(_allData);
+
+  } catch (err) {
+    console.error('[Final] Error:', err);
+    document.getElementById('loading').innerHTML =
+      '<div style="text-align:center;padding:1rem;"><p style="color:var(--danger);margin-bottom:.75rem;">⚠ Gagal memuat data.</p><button class="btn btn-primary" onclick="location.reload()">🔄 Coba Lagi</button></div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadSelections();
+  loadData();
+});
+</script>
+</body>
+</html>
