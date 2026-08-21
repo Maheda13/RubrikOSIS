@@ -55,7 +55,7 @@
   <section id="section-kelas7" hidden>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-        <h2>🏅 Rekomendasi Kelas 7</h2>
+        <h2>🏅 Top 10 — Kelas 7 (A & B)</h2>
         <button class="btn-export" onclick="exportCSV('kelas7')">⬇ Export CSV</button>
       </div>
       <div class="table-wrapper">
@@ -73,7 +73,7 @@
   <section id="section-kelas8" hidden>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-        <h2>🏅 Rekomendasi Kelas 8</h2>
+        <h2>🏅 Top 15 — Kelas 8 (A & B)</h2>
         <button class="btn-export" onclick="exportCSV('kelas8')">⬇ Export CSV</button>
       </div>
       <div class="table-wrapper">
@@ -85,6 +85,11 @@
         </table>
       </div>
     </div>
+  </section>
+
+  <!-- Ranking Per Divisi -->
+  <section id="section-divisi" hidden>
+    <div id="divisi-container"></div>
   </section>
 
   <!-- Empty state -->
@@ -117,6 +122,9 @@ async function cachedFetch(key, url) {
 let _allData = [];
 let _kelas7Data = [];
 let _kelas8Data = [];
+let _divisiData = {};
+
+const DIVISI_LIST = ['PDLH', 'Kesejahteraan', 'Kesenian dan Olahraga', 'Keamanan', 'Ibadah', 'Humas', 'Bahasa'];
 
 const KATEGORI_COLORS = {
   'Sangat Direkomendasikan': '#27ae60',
@@ -173,6 +181,47 @@ function renderTopTable(tableId, data) {
   }).join('');
 }
 
+function renderDivisiSection() {
+  var container = document.getElementById('divisi-container');
+  if (!container) return;
+  var divKeys = Object.keys(_divisiData);
+  if (divKeys.length === 0) return;
+
+  document.getElementById('section-divisi').hidden = false;
+
+  var html = '<div class="card" style="margin-bottom:1.25rem;"><h2 style="margin-bottom:.5rem;">🏢 Ranking Per Divisi</h2><p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem;">Semua kandidat diurutkan per divisi berdasarkan Nilai Akhir</p></div>';
+
+  var divisiEmoji = { 'PDLH':'🌿', 'Kesejahteraan':'🤝', 'Kesenian dan Olahraga':'🎭', 'Keamanan':'🛡️', 'Ibadah':'🕌', 'Humas':'📢', 'Bahasa':'🌐' };
+
+  divKeys.forEach(function(divisi) {
+    var data = _divisiData[divisi];
+    if (data.length === 0) return;
+    var tableId = 'table-div-' + divisi.replace(/\s+/g, '_');
+    html += '<div class="card" style="margin-bottom:1rem;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem;">'
+      + '<h3>' + (divisiEmoji[divisi]||'📋') + ' ' + esc(divisi) + ' <span style="font-size:.8rem;color:var(--text-muted);font-weight:400;">(' + data.length + ' kandidat)</span></h3>'
+      + '<button class="btn-export" onclick="exportCSV(\'divisi_' + divisi.replace(/\s+/g, '_') + '\')">⬇ CSV</button>'
+      + '</div>'
+      + '<div class="table-wrapper"><table class="summary-table-full" id="' + tableId + '"><thead>'
+      + '<tr><th>Peringkat</th><th>Nama</th><th>Kelas</th><th>Nilai Wawancara</th><th>Nilai Tes Tulis</th><th>Nilai Akhir</th><th>Rekomendasi</th></tr>'
+      + '</thead><tbody>'
+      + data.map(function(item, idx) {
+          return '<tr>'
+            + '<td><strong>' + (idx + 1) + '</strong></td>'
+            + '<td><strong>' + esc(item.nama) + '</strong></td>'
+            + '<td>' + esc(item.kelas) + '</td>'
+            + '<td>' + esc(item.rataRata || '-') + '</td>'
+            + '<td>' + esc(item.skorTesTulis || '-') + '</td>'
+            + '<td><strong>' + esc(item.skorAkhir || '-') + '</strong></td>'
+            + '<td>' + kategoriBadge(item.kategori) + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div></div>';
+  });
+
+  container.innerHTML = html;
+}
+
 // ─── CSV Export ───────────────────────────────────────────────────────
 function exportCSV(type) {
   var data, filename;
@@ -181,10 +230,14 @@ function exportCSV(type) {
     filename = 'semua-penilaian.csv';
   } else if (type === 'kelas7') {
     data = _kelas7Data;
-    filename = 'top10-kelas7.csv';
-  } else {
+    filename = 'top-kelas7.csv';
+  } else if (type === 'kelas8') {
     data = _kelas8Data;
-    filename = 'top10-kelas8.csv';
+    filename = 'top-kelas8.csv';
+  } else if (type.indexOf('divisi_') === 0) {
+    var divName = type.replace('divisi_', '').replace(/_/g, ' ');
+    data = _divisiData[divName] || [];
+    filename = 'ranking-' + divName.replace(/\s+/g, '-') + '.csv';
   }
   if (!data || data.length === 0) { showToast('⚠ Tidak ada data untuk di-export.'); return; }
 
@@ -194,7 +247,7 @@ function exportCSV(type) {
       idx + 1,
       '"' + String(item.nama).replace(/"/g, '""') + '"',
       item.kelas,
-      '"' + String(item.divisi).replace(/"/g, '""') + '"',
+      '"' + String(item.divisi || '').replace(/"/g, '""') + '"',
       item.rataRata || '',
       item.skorTesTulis || '',
       item.skorAkhir || '',
@@ -258,18 +311,28 @@ async function loadData() {
     renderAllTable(sorted);
 
     // Filter kelas 7A/7B
-    _kelas7Data = sorted.filter(function(item) { return isKelas7(item.kelas); }).slice(0, 15);
+    _kelas7Data = sorted.filter(function(item) { return isKelas7(item.kelas); }).slice(0, 10);
     if (_kelas7Data.length > 0) {
       document.getElementById('section-kelas7').hidden = false;
       renderTopTable('table-kelas7', _kelas7Data);
     }
 
     // Filter kelas 8A/8B — Top 15
-    _kelas8Data = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 20);
+    _kelas8Data = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 15);
     if (_kelas8Data.length > 0) {
       document.getElementById('section-kelas8').hidden = false;
       renderTopTable('table-kelas8', _kelas8Data);
     }
+
+    // Group by divisi
+    _divisiData = {};
+    DIVISI_LIST.forEach(function(d) { _divisiData[d] = []; });
+    sorted.forEach(function(item) {
+      var d = (item.divisi || '').trim();
+      if (d && !_divisiData[d]) _divisiData[d] = [];
+      if (d) _divisiData[d].push(item);
+    });
+    renderDivisiSection();
 
   } catch (err) {
     console.error('[Summary] Error:', err);
