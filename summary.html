@@ -9,7 +9,7 @@
 <body>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwEfeqLgcSpV-Lef9zrjB9-66bE0KZsGnZlMT39pCBjfK1Ee3qV4vJtpXpabzAPMsEPQQ/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwUe7QlQvduLMU3FrlCnyY6h4P3MKKTNScrqNCjaOaZN7eRwB-59bScu3OD_uKj8IeRdw/exec';
 </script>
 
 <header>
@@ -73,7 +73,7 @@
   <section id="section-kelas8" hidden>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-        <h2>🏅 Top 10 — Kelas 8 (A & B)</h2>
+        <h2>🏅 Top 15 — Kelas 8 (A & B)</h2>
         <button class="btn-export" onclick="exportCSV('kelas8')">⬇ Export CSV</button>
       </div>
       <div class="table-wrapper">
@@ -256,8 +256,8 @@ async function loadData() {
       renderTopTable('table-kelas7', _kelas7Data);
     }
 
-    // Filter kelas 8A/8B
-    _kelas8Data = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 10);
+    // Filter kelas 8A/8B — Top 15
+    _kelas8Data = sorted.filter(function(item) { return isKelas8(item.kelas); }).slice(0, 15);
     if (_kelas8Data.length > 0) {
       document.getElementById('section-kelas8').hidden = false;
       renderTopTable('table-kelas8', _kelas8Data);
