@@ -236,11 +236,19 @@ async function loadData() {
       return;
     }
 
-    // Sort by skorAkhir descending (fallback to rataRata)
+    // Sort by skorAkhir descending — students without skorAkhir go to bottom
     var sorted = result.data.sort(function(a, b) {
-      var valA = parseFloat(a.skorAkhir) || parseFloat(a.rataRata) || 0;
-      var valB = parseFloat(b.skorAkhir) || parseFloat(b.rataRata) || 0;
-      return valB - valA;
+      var valA = parseFloat(a.skorAkhir);
+      var valB = parseFloat(b.skorAkhir);
+      var hasA = !isNaN(valA);
+      var hasB = !isNaN(valB);
+      if (hasA && hasB) return valB - valA;
+      if (hasA) return -1;
+      if (hasB) return 1;
+      // Both have no skorAkhir: sort by rataRata descending
+      var ra = parseFloat(a.rataRata) || 0;
+      var rb = parseFloat(b.rataRata) || 0;
+      return rb - ra;
     });
 
     _allData = sorted;
